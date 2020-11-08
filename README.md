@@ -505,8 +505,194 @@ for(var i = 1; i <= 4000; i++) {
 - mongo --port 27018  secondy
 - rs.slaveOK(); 允许读
 
+## 统计
+
+- group [不支持分片和集群] 无法分布式运算
+- 想要支持分布式，可以使用aggregate（2.2版本），mapReduce(2.4版本以后)
+```javascript
+db.collection.group(opt)
+opt = {
+    key:{key1: 1, key2: 1},
+    cond:{},
+    reduce: function(curr, result) {
+        
+    },
+    initial: {}, // 刚进入一个分组的初始化函数
+    finalize: function(){} // 一组结束的回调函数
+}
+
+key: 分组字段
+cond: 查询条件
+reduce: 聚合函数
+initial: 初始化
+finalize: 统计一组后的回调函数
+
+{
+    key: {cat_id: 1},
+    cond: {},
+    reduce: function (curr, result) {
+        result.cnt += 1;
+    },
+    initial: {cnt: 0},
+}
+
+{
+    key: {cat_id: 1},
+    cond: {shop_price: {$gt: 50}},
+    reduce: function (curr, result) {
+        result.cnt += 1;
+    },
+    initial: {cnt: 0},
+}
+每组共用一个result
+{
+    key: {cat_id: 1}, // 分组字段
+    cond: {},
+    reduce: function (curr, result) {
+        result.num += curr.good_number;
+    },
+    initial: {num: 0},
+}
+
+最贵的商品
+{
+    key: {cat_id: 1}, // 分组字段
+    cond: {},
+    reduce: function (curr, result) {
+        result.max = curr.shop_price > result.max ? curr.shop_price : result.max;
+    },
+    initial: {max: 0},
+}
+
+商品的平均价格
+{
+    key: {cat_id: 1}, // 分组字段
+    cond: {},
+    reduce: function (curr, result) {
+        result.sum += curr.shop_price;
+        result.cnt += 1;
+    },
+    initial: {sum: 0, cnt: 0, avg: 0},
+    finalize: function(result) {
+        result.avg = result.sum/result.cnt;
+    }
+    
+}
 
 
+```
+
+- aggregate
+```javascript
+
+db.collection.aggregate()
+
+[
+    {$group: {_id: "$cat_id", total:{$sum: 1}}} 
+]
+
+
+[
+    {$group: {_id: null, total:{$sum: 1}}} 
+]
+
+[
+    {$match: {shop_price: {$gt: 50}}},
+    {$group: {_id: "$cat_id", total:{$sum: 1}}} 
+    
+]
+
+[
+    {$match: {shop_price: {$gt: 50}}}, // where
+    {$group: {_id: "$cat_id", total:{$sum: 1}}},
+    {$match: {total: {$gt: 3}}}, // having 对查询结果进行过滤
+]
+
+// good_number 字段求和
+[
+    {$group: {_id: "$cat_id", total:{$sum: "$good_number"}}},
+]
+
+
+[
+    {$group: {_id: "$cat_id", total:{$sum: "$good_number"}}},
+    {$sort: {total: -1}},
+    {$limit: 3},
+]
+
+
+字段名前加 $  表示是一个字段
+[
+    {$group: {_id: "$cat_id", avg:{$avg: "$shop_price"}}},
+    {$sort: {avg: -1}},
+]
+
+```
+
+- mapReduce
+- 相当于传统数据库的group操作
+- 真正的强项在于支持分布式
+- mapReduce支持分布式，支持大量的服务器同时工作，用蛮力来统计
+
+```javascript
+工作过程:
+map -> 映射
+reduce -> 归约
+
+map：先是把属于同一个组的数据，映射到一个数组上 cat_id =3 [23,2,6,7]
+reduce: 把数组的数据进行运算
+
+用mapReduce 计算每个栏目的库存总量
+
+map函数
+var map = function(){
+    emit(this.cat_id, this.goods_number);
+    // emit(this.cat_id, this.shop_price); // 价格
+}
+
+var reduce = function(key, values){
+    // return Array.sum(values);
+    return Array.avg(values); // 求平均
+}
+
+{
+    query:{},
+    out: 'res',  // 结果存放到res集合中
+}
+
+db.goods.mapReduce(
+    map,
+    reduce,
+    {
+        query:{},
+        out: 'res',
+    }
+)
+
+
+// 地震数据
+var map = function() {
+    var  j = Math.floor(this.jing / 5) * 5;
+    var  w = Math.floor(this.wei / 5) * 5;
+    
+    var block = j + ':' + w;
+    
+    emit(block, 1);
+    // emit(block, this.lev);
+}
+
+var reduce = function(key,  values) {
+    // return Array.sum(values);
+    return Array.avg(values);
+}
+
+{out:  'res'};
+
+db.dz.mapReduce(map, reduce, {out: 'res'});
+
+
+mapReduce 就是分布式的group操作
+```
 
 
 

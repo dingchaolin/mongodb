@@ -213,6 +213,85 @@ redis 127.0.0.1:6379> bitop and  res mon feb wen
 - sdiff  key1 key2 差集  key1有，key2没有的元素
 - sinterstore  keyResult key1 key2 存放到keyResult中
 
+## sorted set
+- zadd key score1 value1 score2 value2
+- zrange key rank1 rank2  按排名查
+- zrangebyscore key  score1 score2 按分数查
+- zrangebyscore key score1 score2 limit 1 2
+- limit 1 2 跳过1个取2个
+- WITHSCORES 连分数一起取
+- zrevrange
+- zrank key value  返回排名
+- zrevrank key value 
+- zremrangebyscore key min max 删除[min,max]之间的元素
+- zremrangebyrank key start end  按排名删   从0  计数
+- zrem key value
+- zcard key
+- zcount key  score1 score2 区间有几个元素
+- zinterstore key3 numberkeys key2 key1
+- zinterstore key3 numberkeys key2 key1 weights weight1 weight2 aggregate sum|min|max  默认sum 
+- 把key2 key1 的数据 求和 把结果放到key3中
+- zunionstore key3 numberkeys key2 key1 weights weight1 weight2 aggregate sum|min|max
+
+## hash
+- hset key filed value
+- hgetall key 
+- hmset key field1 value field vaule2 ...
+- hmget key field1 field2
+- hdel key field
+- hlen key 查询长度
+- hexists key field
+- hincby key field value
+- hincbyfloat key field value
+- hkeys key
+- hvals key
+
+## 事务
+- multi
+- decrby key1 100
+- incrby key2 100
+- exec
+- multi 之后并不会执行
+- 而是放在了队列里
+- exec 集中执行
+- 执行的时候，会执行正确的语句，并跳过不正确的语句 
+- discard  实际就是清理队列 
+- 即使是exec中出错了，exec中正确执行的语句也不会被取消
+
+
+- 乐观锁
+- watch 监控，如果watch以后，在执行事务的时候出现了变化，事务会执行失败 exec 返回nil
+- set ticket 1
+- set lisi 300
+- set  wang 300
+- watch ticket
+- multi
+- decr ticket 
+- decrby lisii 100
+- exec  
+- watch 可以监视多个key，任意一个key 有变，事务取消
+- unwatch  
+- 取消监控
+
+## pub/sub
+- publish news 'today is sunshine'
+- subscribe news 
+- psubscribe new*
+- pubsub channels 列出当前活动的收听频道 如果没有指定，会列出所有的
+- 群聊，系统广告
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

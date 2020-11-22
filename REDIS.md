@@ -280,6 +280,63 @@ redis 127.0.0.1:6379> bitop and  res mon feb wen
 - pubsub channels 列出当前活动的收听频道 如果没有指定，会列出所有的
 - 群聊，系统广告
 
+## rdb快照持久化
+- 把数据存储于断电后不会丢失的设备中，通常是硬盘
+- 通过从服务器保存和持久化，如mongodb的replication sets 配置
+- 操作生成相关日志，并通过日志来恢复数据
+- rdb的工作原理
+- 每隔N分钟或者N次操作以后，从内存中dump数据，形成rdb文件
+- 压缩
+- 放在备份目录
+- redis.conf
+- save 900 1
+- save 300 10
+- save 60 10000
+- 上面的3个配置都注释掉，则不再导出rdb文件
+- 60秒内有10000次操作或者变化进行保存
+- 300秒内超过10次变化，进行保存
+- 900秒内有超过1次变化，进行保存
+- stop-writes-on-bgsave-error yes
+- 当后台导出rdb出错的时候，停止redis写入
+- rdbcompression yes
+- 是否压缩
+- rdbchecksum yes
+- 重启redis服务器从rdb导入数据到内存，要检测数据是否完整
+- dbfilename dump.rdb
+- dir ./
+- redis-benchmark -n 10000  性能测试
+- 两个保存点之间断电，将会丢失1-N分钟的数据
+- 出于对持久化更精细的要求，redis增加了atof方式 append only file
+- redis-server -> if(触发条件) {redis-dump进程}  
+- 因为导出的是整块的内存，恢复速度是比较快的
+
+## aof日志持久化
+- appendonly no  开关
+- appendfsync always 每一个命令都立即同步到aof，安全，速度慢
+- appendfsync everysec 每秒1次
+- appendfsync no 写入工作交给操作系统，由操作系统判断缓冲区的大小 统一写到aof，同步频率低，速度快
+- no-appendfsync-on-rewrite yes 正在导出rdb快照的过程中，要不要停止同步aof
+- 在dump rdb 的过程中，aof如果停止爱同步，会不会丢失？
+- 不会，所有的操作都会缓存在内部的队列里，dump完成后，统一操作
+- appendfilename appendonly.aof
+
+- auto-aof-rewrite-precentage 100  
+- aof文件大小比起上次重写时的大小，增长率100% 重写
+- auto-aof-rewrite-size 64m 文件至少64M才重写
+- bgrewriteaof 重写aof文件
+
+- aof重写指什么？
+- aof重写指把内存中的数据，逆化成命令，写到aof中，以解决aof过大的问题
+- 优先使用aof恢复数据，恢复的时候，可能仅用了aof，而没有用rdb
+- 两种可以同时使用，推荐这么做
+- rdb恢复数据更快，rdb是数据直接载入到内存， 二进制数据，aof需要逐条执行命令
+
+
+
+
+
+   
+
 
 
 

@@ -331,7 +331,71 @@ redis 127.0.0.1:6379> bitop and  res mon feb wen
 - 两种可以同时使用，推荐这么做
 - rdb恢复数据更快，rdb是数据直接载入到内存， 二进制数据，aof需要逐条执行命令
 
+## redis服务器集群
+- 主从备份，防止主机宕机
+- 读写分离，分担master的任务
+- 任务分离，如从服分别分担备份工作与计算工作
+- 星型集群 直线型集群
 
+### 主从同步过程
+- slave -> aync -> master
+- master ->dump -> rdb -> slave
+- master -缓冲aof -> salve
+- master -> replicationFeedSlaves -> salve 
+
+### 部署
+- cp redis.conf redis6380.conf
+- cp redis.conf redis6381.conf
+- 6380配置
+- pidfile /var/run/redis6380.pid
+- port 6380
+- dbfilename  dump6380.rdb
+- salveof localhost 6379  6380是6379的salve
+- slave-read-only yes  只读选项
+
+- 6381配置
+- pidfile /var/run/redis6381.pid
+- port 6381
+- dbfilename  dump6380.rdb  这里rdb就不再产生了，aof也不产生了
+- salveof localhost 6379  6381是6379的salve
+- slave-read-only yes  只读选项
+
+- 6379 配置
+- 禁止rdb即可
+- aof可要可不要（主服务器打开比较好，信息比较全）
+
+
+- 启动
+- redis-server redis.conf
+- redis-server redis6380.conf
+- redis-server redis6381.conf
+
+- 一个salve 做rdb
+- master  做 aof
+- 内网就不要用密码了
+
+- 密码
+- 主服务器 requirepass 123456
+- auth 密码
+- 配了密码以后，从服务器也连不上了
+- 从配置密码
+- masterauth 123456
+
+- 主从复制缺陷
+- 每次salve断开后，无论是主动断开，还是网络故障
+- 再连接master
+- 都master全部dump出来rdb，再aof
+- 即同步的过程都要重新执行一遍
+- 多台salve不要一下都启动起来，否则master可能io飙升
+
+
+
+
+
+
+
+
+    
 
 
 

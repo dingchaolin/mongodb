@@ -328,6 +328,7 @@ redis 127.0.0.1:6379> bitop and  res mon feb wen
 - aof重写指什么？
 - aof重写指把内存中的数据，逆化成命令，写到aof中，以解决aof过大的问题
 - 优先使用aof恢复数据，恢复的时候，可能仅用了aof，而没有用rdb
+- 如果找不到aof，就会从rdb恢复
 - 两种可以同时使用，推荐这么做
 - rdb恢复数据更快，rdb是数据直接载入到内存， 二进制数据，aof需要逐条执行命令
 
@@ -387,6 +388,75 @@ redis 127.0.0.1:6379> bitop and  res mon feb wen
 - 都master全部dump出来rdb，再aof
 - 即同步的过程都要重新执行一遍
 - 多台salve不要一下都启动起来，否则master可能io飙升
+
+## 运维相关的命令
+- time 查看当前的时间
+- dbsize 当前数据库下有多少key, 不是整个服务器
+- bgrewriteaof   重写aof
+- bgsave  后台保存rdb
+- save    保存rdb
+- lastsave 上次保存rdb的时间
+- flushdb  清空当前db数据
+- flushall 清空当前所有db的数据
+- info   查看redis信息  状态，操作系统，几个客户端连接
+```javascript
+used_memory   数据结构在内存中占用的空间
+used_memory_rss 实际占用的空间
+mem_fragmentation_ratio:  used_memory / used_memory_rss
+该值在[1,2]之间比较好，如果过大，说明redis内存碎片化严重，可以导出再导入一次
+
+
+# replication 主从复制信息
+role: master   
+connected_slaves: 0
+
+# presistence 持久化信息
+rdb_changes_since_last_save 上次保存以后又有几次修改
+rdb_last_save_time 上次的保存时间
+
+latest_fork_usec: 2875
+上次导出rdb快照 做持久化，花了多久
+注意
+如果某实例有10G内容，导出需要2分钟
+每分钟写入10000次，导致不断的rdb导出，磁盘始终处于高io状态
+```
+- info status
+- 可以根据自己的需要查看相应的信息
+
+- config set/get
+- config get requirepass
+- config get slowlog-log-slower-than  
+- 查询大于多久的是慢查询，需要记录慢查询日志
+- config  slowlog-log-slower-than  100  单位微秒
+- config  get slowlog-max-len  最多记录多少条慢查询日志
+- slowlog get N  查询慢日志
+- shutdown 关闭redis-server
+
+
+## aof恢复与rdb服务器间迁移
+- 如果redis被flushall，第一步操作是shutdown服务器，防止有数据写入导致aof重写
+- shutdown nosave
+- 删掉aof中的flushall命令（最后3行），重启服务器
+
+- rdb迁移
+- copy别忘记 save/bgsave
+- copy一份别的服务器的rdb
+- 禁用aof功能  appendonlyfile no
+- 指定新服务的rdb文件为复制于其他服务器的文件
+- redis-check-dump  **.rdb  检查rdb文件是否有问题
+- 启动redis服务器即可
+- redis之前的rdb是可以通用的
+- 注意
+- 使用redis-server还在运行时复制的rdb文件，是无法进行恢复的
+- 需要先shutdown redis-server，在复制rdb文件，才可以
+- 复制的文件使用的相同的句柄，会导致redis-server无法恢复
+- shutdown nosave  一定要跟nosave参数
+
+
+
+
+
+
 
 
 

@@ -452,6 +452,72 @@ latest_fork_usec: 2875
 - 复制的文件使用的相同的句柄，会导致redis-server无法恢复
 - shutdown nosave  一定要跟nosave参数
 
+##  sentinel 运维监控
+- 连接redis
+- info Replication  查看主从情况
+- ps aux|grep redis
+- config get  appendonly  运行时动态获取配置信息
+- config set              运行时动态设置配置信息
+- 6379 master  6380 6381 slave
+- 假如6379down  那么要做的操作如下:
+- 将6380设置为master  6381设置为6380的salve
+- master_link_status 可以看出主从的连接状态
+
+- 修改一台从服务器为主服务器
+- slaveof no one
+- config get slave-read-only
+- config set  salve-read-only no
+
+- 修改从服务器指向
+- slaveof ip port
+- slaveof localhost 6380
+
+- 下面的2 表示连续几次或者有2个sentinel出现连不上的情况 认为出了问题
+- 测试写1就行
+- sentinel monitor def_master 127.0.0.1 6379 2
+- 密码
+- sentinel auth-pass def_master 012_345^678-90
+- 30秒连不上，认为出问题了
+- sentinel down-after-millisecconds def_master 30000
+- 只有一台sentinel有权更改配置
+- 在源代码下有sentinel.conf 
+- sentinel failover-timeover def_master 900000
+- 900000 未正确执行，就需要人工处理了
+- sentinel parallel-syncs def_master 1
+- 同时能几台slave指向master
+- 每次slave断开后，无论是主动断开还是网络故障，再连接master
+- 都要master全部dump出来rdb，在aof，即同步过程要重新执行一遍
+- sentinel 进程是通过redis-server执行的
+- redis-server sentinel.conf --sentinel
+- salve-priority 100  当master down了以后，设置slave变成master的优先级
+- 数字越小，越优先
+
+## key设计原则
+- sinter tag:PHP tag:WEB
+- sunion tag:PHP tag:WEB
+- sdiff 差集
+
+- 把表名转化为key前缀
+- 第二段放置用于区分key的字段，对应mysql中的主键的列名，如userid
+- 第三段放置主键值 如 2，3，4
+- 第四段写要存储的列名
+
+- set user:userid:9:username lisi
+- set user:userid:9:password 123456
+- 如何用用户名查询？
+- set  user:username:lisi:userid 9
+- 再通过uid去查询其他信息
+- 存储主键来关联信息
+- 这样不会导致很多的冗余，通过username查询uid，再通过uid查询别的信息
+
+
+
+
+ 
+
+
+
+
 
 
 
